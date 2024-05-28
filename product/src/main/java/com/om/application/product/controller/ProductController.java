@@ -51,8 +51,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.listProducts(category, search));
     }
 
-    // @ApiOperation(value = "Upload products", consumes = MediaType.APPLICATION_JSON_VALUE,
-    // produces = MediaType.APPLICATION_JSON_VALUE)
+
     @PostMapping(value = "/upload", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file)  {
         String status = jobService.processFileAsync(file);
