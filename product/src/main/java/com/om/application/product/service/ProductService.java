@@ -66,6 +66,7 @@ public class ProductService {
         try (Reader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
             CsvToBean<Product> csvToBean = new CsvToBeanBuilder<Product>(reader)
                     .withType(Product.class)
+
                     .withIgnoreLeadingWhiteSpace(true)
                     .build();
 

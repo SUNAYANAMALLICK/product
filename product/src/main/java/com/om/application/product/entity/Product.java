@@ -1,6 +1,8 @@
 package com.om.application.product.entity;
 
+import com.om.application.product.util.LocalDateTimeConverter;
 import com.opencsv.bean.CsvBindByName;
+import com.opencsv.bean.CsvCustomBindByName;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -42,12 +44,14 @@ public class Product {
 
     private String warehouseLocation;
 
-    @CsvBindByName(column = "createdAt")
+    @CsvCustomBindByName(column = "createdAt",  converter = LocalDateTimeConverter.class)
 
     private LocalDateTime createdAt;
     @CsvBindByName(column = "updatedAt")
 
     private LocalDateTime updatedAt;
 
-    // Getters and setters
+
+
+
 }
