@@ -45,10 +45,7 @@ public class ProductService {
         return productRepository.save(product);
     }
 
-    public void deleteProduct(Long id) {
-        Product product = getProductById(id);
-        productRepository.delete(product);
-    }
+
 
     public List<Product> listProducts(String category, String search) {
         if (search != null) {
@@ -72,6 +69,12 @@ public class ProductService {
 
             return csvToBean.parse();
         }
+    }
+
+
+    public String processFile(MultipartFile file) throws IOException {
+        saveProducts(parseFile(file));
+        return "Success";
     }
 }
 

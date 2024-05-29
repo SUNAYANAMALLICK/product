@@ -8,85 +8,159 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
-class ProductServiceTest {
+public class ProductServiceTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private MultipartFile multipartFile;
 
     @InjectMocks
     private ProductService productService;
 
     @BeforeEach
-    void setUp() {
-        MockitoAnnotations.initMocks(this);
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
     }
 
     @Test
-    void testCreateProduct() {
+    public void testCreateProduct_success() {
         Product product = new Product();
         when(productRepository.save(any(Product.class))).thenReturn(product);
-        Product savedProduct = productService.createProduct(product);
-        assertEquals(product, savedProduct);
+
+        Product createdProduct = productService.createProduct(product);
+
+        assertNotNull(createdProduct);
+        assertEquals(product, createdProduct);
+        verify(productRepository, times(1)).save(product);
     }
 
     @Test
-    void testGetProductById() {
-        Long id = 1L;
+    public void testGetProductById_success() {
         Product product = new Product();
-        when(productRepository.findById(id)).thenReturn(Optional.of(product));
-        Product retrievedProduct = productService.getProductById(id);
-        assertEquals(product, retrievedProduct);
+        when(productRepository.findById(anyLong())).thenReturn(Optional.of(product));
+
+        Product foundProduct = productService.getProductById(1L);
+
+        assertNotNull(foundProduct);
+        assertEquals(product, foundProduct);
+        verify(productRepository, times(1)).findById(1L);
     }
 
     @Test
-    void testGetProductById_NotFound() {
-        Long id = 1L;
-        when(productRepository.findById(id)).thenReturn(Optional.empty());
-        assertThrows(ResourceNotFoundException.class, () -> productService.getProductById(id));
+    public void testGetProductById_notFound() {
+        when(productRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
+            productService.getProductById(1L);
+        });
+
+        assertEquals("Product not found", exception.getMessage());
+        verify(productRepository, times(1)).findById(1L);
     }
 
     @Test
-    void testUpdateProduct() {
-        Long id = 1L;
+    public void testUpdateProduct_success() {
         Product existingProduct = new Product();
-        Product updatedProduct = new Product();
-        when(productRepository.findById(id)).thenReturn(Optional.of(existingProduct));
-        when(productRepository.save(any(Product.class))).thenReturn(updatedProduct);
-        Product result = productService.updateProduct(id, updatedProduct);
-        assertEquals(updatedProduct, result);
+        existingProduct.setId(1L);
+        Product updatedProductDetails = new Product();
+        updatedProductDetails.setName("Updated Name");
+
+        when(productRepository.findById(anyLong())).thenReturn(Optional.of(existingProduct));
+        when(productRepository.save(any(Product.class))).thenReturn(existingProduct);
+
+        Product updatedProduct = productService.updateProduct(1L, updatedProductDetails);
+
+        assertNotNull(updatedProduct);
+        assertEquals("Updated Name", updatedProduct.getName());
+        verify(productRepository, times(1)).findById(1L);
+        verify(productRepository, times(1)).save(existingProduct);
     }
 
-    // Test other methods similarly
+    @Test
+    public void testListProducts_success() {
+        List<Product> products = Arrays.asList(new Product(), new Product());
+        when(productRepository.findAll()).thenReturn(products);
 
-//    @Test
-//    void testParseFile() throws IOException {
-//        // Load test CSV file from resources
-//        ClassPathResource resource = new ClassPathResource("product.csv");
-//        InputStream inputStream = resource.getInputStream();
-//
-//        // Create MultipartFile object with test file content
-//        MultipartFile file = new MockMultipartFile("product.csv", inputStream);
-//
-//        // Mock the behavior of productRepository.saveAll to return a list of products
-//        List<Product> productList = Collections.singletonList(new Product());
-//        when(productRepository.saveAll(anyIterable())).thenReturn(productList);
-//
-//        // Call the parseFile method with the test MultipartFile
-//        List<Product> result = productService.parseFile(file);
-//
-//        // Assert that the result matches the expected list of products
-//        assertEquals(productList, result);
-//    }
+        List<Product> foundProducts = productService.listProducts(null, null);
+
+        assertNotNull(foundProducts);
+        assertEquals(2, foundProducts.size());
+        verify(productRepository, times(1)).findAll();
+    }
+
+    @Test
+    public void testListProducts_withSearch() {
+        List<Product> products = Arrays.asList(new Product());
+        when(productRepository.findByNameContaining(any(String.class))).thenReturn(products);
+
+        List<Product> foundProducts = productService.listProducts(null, "search");
+
+        assertNotNull(foundProducts);
+        assertEquals(1, foundProducts.size());
+        verify(productRepository, times(1)).findByNameContaining("search");
+    }
+
+    @Test
+    public void testProcessFile_withValidFile() throws IOException {
+        InputStream inputStream = mock(InputStream.class);
+        when(multipartFile.getInputStream()).thenReturn(inputStream);
+
+        // Assuming valid CSV data is provided in the input stream
+        List<Product> products = List.of(new Product(), new Product());
+        when(productRepository.saveAll(anyList())).thenReturn(products);
+
+        String result = productService.processFile(multipartFile);
+
+        assertEquals("Success", result);
+        verify(productRepository, times(1)).saveAll(anyList());
+    }
+
+    @Test
+    public void testProcessFile_withInvalidFile() throws IOException {
+        InputStream inputStream = mock(InputStream.class);
+        when(multipartFile.getInputStream()).thenThrow(new IOException("Invalid file"));
+
+        Exception exception = assertThrows(IOException.class, () -> {
+            productService.processFile(multipartFile);
+        });
+
+        assertEquals("Invalid file", exception.getMessage());
+    }
+
+    @Test
+    public void testParseFile_success() throws IOException {
+        MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", "id,name,description\n1,Product1,Description1".getBytes());
+        List<Product> products = productService.parseFile(file);
+
+        assertNotNull(products);
+        assertEquals(1, products.size());
+        assertEquals("Product1", products.get(0).getName());
+    }
+
+    @Test
+    public void testParseFile_withIOException() throws IOException {
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.getInputStream()).thenThrow(new IOException("Error reading file"));
+
+        assertThrows(IOException.class, () -> {
+            productService.parseFile(file);
+        });
+    }
 }

@@ -1,7 +1,6 @@
 package com.om.application.product.controller;
 
 import com.om.application.product.entity.Product;
-import com.om.application.product.service.JobService;
 import com.om.application.product.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,8 +20,6 @@ public class ProductController {
     @Autowired
     private ProductService productService;
 
-    @Autowired
-    private JobService jobService;
 
     @PostMapping
     public ResponseEntity<Product> createProduct(@RequestBody Product product) {
@@ -31,7 +28,11 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getProductById(id));
+        Product product = productService.getProductById(id);
+        if (product == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+        return ResponseEntity.ok(product);
     }
 
     @PutMapping("/{id}")
@@ -39,11 +40,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.updateProduct(id, product));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        productService.deleteProduct(id);
-        return ResponseEntity.noContent().build();
-    }
+
 
     @GetMapping
     public ResponseEntity<List<Product>> listProducts(@RequestParam(required = false) String category,
@@ -53,8 +50,8 @@ public class ProductController {
 
 
     @PostMapping(value = "/upload", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file)  {
-        String status = jobService.processFileAsync(file);
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
+        String status = productService.processFile(file);
         return ResponseEntity.ok("Job Running : Check status " + status);
     }
 }
